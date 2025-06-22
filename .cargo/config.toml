@@ -1,0 +1,36 @@
+[build]
+target = "thumbv6m-none-eabi"
+
+[target.thumbv6m-none-eabi]
+# runner = "probe-rs run --always-print-stacktrace --chip RP2040"  # "elf2uf2-rs -d"
+runner = "elf2uf2-rs -d " #--deploy --serial --verbose
+rustflags = [
+    "-C", "link-arg=--nmagic",
+    "-C", "link-arg=-Tlink.x",
+    "-C", "link-arg=-Tlink-rp.x",
+    "-C", "link-arg=-Tdefmt.x",
+    "-C", "linker=flip-link",
+    "-C", "inline-threshold=5",
+    "-C", "no-vectorize-loops",
+]
+
+[env]
+DEFMT_LOG = "trace"
+
+[net]
+git-fetch-with-cli = true
+
+[http]
+proxy = ""
+
+[source.crates-io]
+replace-with = 'tuna'  # или 'ustc' (для Китая), 'rsproxy' (Россия)
+
+[source.tuna]
+registry = "https://mirrors.tuna.tsinghua.edu.cn/git/crates.io-index.git"
+
+[source.ustc]
+registry = "https://mirrors.ustc.edu.cn/crates.io-index/"
+
+[source.rsproxy]
+registry = "https://rsproxy.cn/crates.io-index"
