@@ -657,8 +657,12 @@ dependencies = [
 
 [[package]]
 name = "fuzzy_controller"
-version = "0.1.0"
-source = "git+https://github.com/Ares566/rust_fuzzy_controller#7e6726a8ddb26d2127950484b4c52690410ba109"
+version = "0.1.1"
+source = "git+https://github.com/Ares566/rust_fuzzy_controller#3599968870bf39301cbb36b9923d98442b013715"
+dependencies = [
+ "heapless",
+ "num-traits",
+]
 
 [[package]]
 name = "generic-array"

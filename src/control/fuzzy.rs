@@ -2,7 +2,7 @@ use fuzzy_controller::fuzzy::controller as FC;
 use crate::drivers::actuators::servo::Servo;
 
 pub struct FuzzyController {
-    fuzzy: FC
+    fuzzy: FC::FuzzyController
 }
 
 
@@ -13,8 +13,8 @@ impl FuzzyController {
         }
     }
 
-    pub(crate) fn update(&self, p0: f32, p1: f32, p2: f32) -> _ {
-        todo!()
+    pub fn update(&self, target: f32, current: f32, dt: f32) -> f32 {
+        self.fuzzy.get_fuzzy_conclusion(current-target, dt)
     }
 }
 

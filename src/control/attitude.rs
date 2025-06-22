@@ -231,11 +231,11 @@ impl AttitudeController {
 
     /// Сброс интегральных составляющих PID контроллеров
     pub fn reset_integrators(&mut self) {
-        self.roll_angle_pid.reset();
-        self.roll_rate_pid.reset();
-        self.pitch_angle_pid.reset();
-        self.pitch_rate_pid.reset();
-        self.yaw_rate_pid.reset();
+        // self.roll_angle_pid.reset();
+        // self.roll_rate_pid.reset();
+        // self.pitch_angle_pid.reset();
+        // self.pitch_rate_pid.reset();
+        // self.yaw_rate_pid.reset();
     }
 
     /// Установка базового уровня газа
