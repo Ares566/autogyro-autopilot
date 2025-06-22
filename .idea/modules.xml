@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/embassy_dshot.iml" filepath="$PROJECT_DIR$/.idea/embassy_dshot.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/autogyro-autopilot.iml" filepath="$PROJECT_DIR$/.idea/autogyro-autopilot.iml" />
     </modules>
   </component>
 </project>
