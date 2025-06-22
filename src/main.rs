@@ -146,7 +146,7 @@ async fn main(spawner: Spawner) {
     //spawner.spawn(tasks::gps_task(uart_gps)).unwrap();
 
     // TODO Задача управления полетом
-    //spawner.spawn(tasks::control_task()).unwrap();
+    spawner.spawn(control_task::task()).unwrap();
 
     // TODO вынести на отдельное ядро
     // Задача управления исполнительными механизмами

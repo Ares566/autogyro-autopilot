@@ -12,7 +12,7 @@ use crate::control::attitude::AttitudeController;
 const CONTROL_RATE_HZ: u32 = 50;
 
 #[embassy_executor::task]
-pub async fn control_task() {
+pub async fn task() {
     // Инициализация контроллеров
     let mut attitude_controller = AttitudeController::new();
 
