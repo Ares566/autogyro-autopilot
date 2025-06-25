@@ -1,5 +1,5 @@
 use fuzzy_controller::fuzzy::controller as FC;
-use crate::drivers::actuators::servo::Servo;
+
 
 pub struct FuzzyController {
     fuzzy: FC::FuzzyController

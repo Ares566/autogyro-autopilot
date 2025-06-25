@@ -3,6 +3,7 @@ use core::sync::atomic::{AtomicBool, Ordering};
 use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
 use embassy_sync::channel::{Channel, Receiver, Sender};
 use embassy_sync::mutex::Mutex;
+use embassy_time::Timer;
 
 /// Размеры буферов каналов
 const SENSOR_CHANNEL_SIZE: usize = 10;
@@ -46,8 +47,8 @@ pub struct GpsData {
 /// Команды управления
 #[derive(Clone, Copy, Debug)]
 pub struct ControlCommand {
-    pub throttle_left: f32,  // Газ левого мотора (48.0 - 2047.0)
-    pub throttle_right: f32, // Газ правого мотора (48.0 - 2047.0)
+    pub throttle_left: u16,  // Газ левого мотора (48 - 2047)
+    pub throttle_right: u16, // Газ правого мотора (48 - 2047)
     pub cyclic_pitch: f32,   // Циклический шаг по тангажу (-1.0 - 1.0)
     pub cyclic_roll: f32,    // Циклический шаг по крену (-1.0 - 1.0)
 }
@@ -105,6 +106,9 @@ impl SystemState {
 
     /// Проверка готовности системы к полету
     pub async fn is_ready_for_flight(&self) -> bool {
+        // TODO для тестов моторов эмулируем запуск системы, по очереди подключать
+        Timer::after_secs(10).await;
+        return true;
         let imu_ok = self.last_imu.lock().await.is_some();
         let alt_ok = self.last_altitude.lock().await.is_some();
         let gps_ok = self.last_gps.lock().await.is_some();

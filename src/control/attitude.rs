@@ -3,7 +3,7 @@
 use crate::config::flight::{autogyro, pid, stabilization};
 use crate::control::fuzzy::FuzzyController;
 use crate::data::{ControlCommand, ImuData};
-use crate::utils::math::{apply_expo, constrain};
+use crate::utils::math::{apply_expo, constrain, constrain_i32, constrain_u16};
 use core::f32::consts::PI;
 
 /// Контроллер стабилизации положения (attitude)
@@ -19,14 +19,15 @@ pub struct AttitudeController {
     // pitch_rate_pid: PidController,
     // /// PID контроллер угловой скорости рыскания
     // yaw_rate_pid: PidController,
+    // TODO уйти в сторону более маленьких данных
     /// Целевые углы (радианы)
-    target_roll: f32,
+    target_roll: f32, // TODO например хранить множитель для 1/1000
     target_pitch: f32,
     /// Целевая угловая скорость рыскания (рад/с)
     target_yaw_rate: f32,
 
     /// Базовый уровень газа
-    base_throttle: f32,
+    base_throttle: u16,
 
     /// Время последнего обновления (для расчета dt)
     last_update_us: u64,
@@ -85,7 +86,7 @@ impl AttitudeController {
             target_roll: 0.0,
             target_pitch: 0.0,
             target_yaw_rate: 0.0,
-            base_throttle: 0.0,
+            base_throttle: 0,
             last_update_us: 0,
         }
     }
@@ -96,7 +97,7 @@ impl AttitudeController {
         roll_deg: f32,
         pitch_deg: f32,
         yaw_rate_deg_s: f32,
-        throttle: f32,
+        throttle: u16,
     ) {
         // Преобразуем градусы в радианы и применяем ограничения
         self.target_roll = constrain(
@@ -117,7 +118,7 @@ impl AttitudeController {
             stabilization::MAX_ANGULAR_RATE_RAD_S,
         );
 
-        self.base_throttle = constrain(throttle, 0.0, 1.0);
+        self.base_throttle = constrain_u16(throttle, 48, 2047);
     }
 
     /// Расчет управляющих команд для режима стабилизации
@@ -211,14 +212,15 @@ impl AttitudeController {
 
         // Для автожира управление курсом через дифференциал тяги
         let yaw_differential = yaw_out * autogyro::YAW_THRUST_DIFFERENTIAL;
-
+        
+        // TODO перевести на нечеткую логику, пока заглушки
         // Расчет тяги моторов с учетом управления курсом
-        let throttle_left = constrain(self.base_throttle - yaw_differential, 48.0, 2047.0);
+        let throttle_left = constrain_u16(self.base_throttle - yaw_differential as u16, 48, 2047);
 
-        let throttle_right = constrain(self.base_throttle + yaw_differential, 48.0, 2047.0);
+        let throttle_right = constrain_u16(self.base_throttle + yaw_differential as u16, 48, 2047);
 
         // Компенсация тангажа в зависимости от тяги (особенность автожира)
-        let pitch_compensation = self.base_throttle * autogyro::THRUST_TO_PITCH_RATIO;
+        let pitch_compensation = 0.0; //self.base_throttle * autogyro::THRUST_TO_PITCH_RATIO;
         let cyclic_pitch = constrain(pitch_out + pitch_compensation, -1.0, 1.0);
 
         ControlCommand {
@@ -239,8 +241,8 @@ impl AttitudeController {
     }
 
     /// Установка базового уровня газа
-    pub fn set_throttle(&mut self, throttle: f32) {
-        self.base_throttle = constrain(throttle, 0.0, 1.0);
+    pub fn set_throttle(&mut self, throttle: u16) {
+        self.base_throttle = constrain_u16(throttle, 48, 2047);
     }
 
     /// Получение текущих целевых углов (для телеметрии)
@@ -289,7 +291,7 @@ mod tests {
     #[test]
     fn test_target_limits() {
         let mut controller = AttitudeController::new();
-        controller.set_targets(45.0, 30.0, 200.0, 0.5);
+        controller.set_targets(45.0, 30.0, 200.0, 2048/2);
 
         let (roll, pitch, _) = controller.get_targets();
         assert!(roll <= stabilization::MAX_ROLL_ANGLE_DEG);

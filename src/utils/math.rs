@@ -26,6 +26,20 @@ pub fn constrain_i32(value: i32, min: i32, max: i32) -> i32 {
     }
 }
 
+
+/// Ограничение целочисленного значения в заданных пределах
+#[inline(always)]
+pub fn constrain_u16(value: u16, min: u16, max: u16) -> u16 {
+    if value < min {
+        min
+    } else if value > max {
+        max
+    } else {
+        value
+    }
+}
+
+
 /// Применение экспоненциальной кривой к управляющему сигналу
 /// expo: 0.0 = линейная, 1.0 = максимальная экспонента
 #[inline]

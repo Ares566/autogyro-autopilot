@@ -27,15 +27,20 @@ pub async fn task() {
 
         // Проверяем режим полета
         let flight_mode = *SYSTEM_STATE.flight_mode.lock().await;
-
+        
         // Если система не armed, отправляем нулевые команды
         if !SYSTEM_STATE.armed.load(core::sync::atomic::Ordering::Relaxed) {
             let _ = control_sender.try_send(ControlCommand {
-                throttle_left: 0.0,
-                throttle_right: 0.0,
+                throttle_left: 0,
+                throttle_right: 0,
                 cyclic_pitch: 0.0,
                 cyclic_roll: 0.0,
             });
+            
+            // TODO перевод в состояние armed=true
+            //  после нужен очевидный для оператора self_test системы (новый SYSTEM_STATE.flight_mode): 
+            //  на низких оборотах покрутить обоими моторами 
+            //  + тест сервоприводов - круговое движением ротором в обе стороны
             continue;
         }
 
@@ -58,8 +63,8 @@ pub async fn task() {
                 _ => {
                     // Безопасные значения по умолчанию
                     ControlCommand {
-                        throttle_left: 0.0,
-                        throttle_right: 0.0,
+                        throttle_left: 0,
+                        throttle_right: 0,
                         cyclic_pitch: 0.0,
                         cyclic_roll: 0.0,
                     }
