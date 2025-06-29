@@ -40,7 +40,7 @@ pub async fn task() {
            
             
             // через секунду моторы должны быть в состоянии armed
-            if armed_count > CONTROL_RATE_HZ {
+            if armed_count > 3*CONTROL_RATE_HZ {
                 SYSTEM_STATE.armed.store(true, core::sync::atomic::Ordering::Relaxed);
             }
             
@@ -52,11 +52,11 @@ pub async fn task() {
         }
         let mut demo_throtle = 200;
         if armed_count > 9*CONTROL_RATE_HZ {
-            demo_throtle = 800;
+            demo_throtle = 600;
         }
 
         if armed_count > 15*CONTROL_RATE_HZ {
-            demo_throtle = 1200;
+            demo_throtle = 1000;
         }
 
         if armed_count > 21*CONTROL_RATE_HZ {

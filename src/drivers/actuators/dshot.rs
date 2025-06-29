@@ -237,6 +237,8 @@ impl<'d, PIO: Instance> DshotPioTrait<2> for DshotPio<'d, 2, PIO> {
         if !self.pio_instance.sm0.tx().full() {
             self.pio_instance.sm0.tx().push(command[0] as u32);
             self.pio_instance.sm1.tx().push(command[1] as u32);
+        }else {
+            defmt::debug!("pio_instance.sm0.tx().full")
         }
     }
 

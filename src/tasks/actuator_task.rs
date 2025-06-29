@@ -65,7 +65,6 @@ pub async fn task(
         let command = match control_receiver.try_receive() {
             Ok(cmd) => {
                 state.failure_count = 0;
-                state.last_valid_command = cmd;
                 cmd
             }
             Err(_) => {
@@ -97,6 +96,7 @@ pub async fn task(
                 &mut state,
             ).await;
         } else {
+            
             // Нормальное управление
             apply_control_command(
                 command,
@@ -105,6 +105,7 @@ pub async fn task(
                 &mut servo_roll,
                 &mut state,
             ).await;
+            
         }
 
         // Проверка состояния исполнительных механизмов
@@ -121,38 +122,41 @@ async fn apply_control_command(
     state: &mut ActuatorState,
 ) {
     // Проверка и ограничение значений команд
-    let throttle_left = constrain_u16(cmd.throttle_left, 48, 2048);
-    let throttle_right = constrain_u16(cmd.throttle_right, 48, 2048);
+    // let throttle_left = constrain_u16(cmd.throttle_left, 48, 2048);
+    // let throttle_right = constrain_u16(cmd.throttle_right, 48, 2048);
     let cyclic_pitch = constrain(cmd.cyclic_pitch, -1.0, 1.0);
     let cyclic_roll = constrain(cmd.cyclic_roll, -1.0, 1.0);
     
     // Применение сглаживания для плавности управления
-    let dt: f32 = state.last_update.elapsed().as_secs().as_();
+    let dt = state.last_update.elapsed().as_micros();
     state.last_update = Instant::now();
 
     // Ограничение скорости изменения газа (защита от резких рывков)
-    const MAX_THROTTLE_RATE: f32 = 2.0; // максимум 200% в секунду
-    let max_throttle_change = MAX_THROTTLE_RATE * dt;
+    const MAX_THROTTLE_RATE: f64 = 2.0; // максимум 200% в секунду
+    let max_throttle_change = (MAX_THROTTLE_RATE * (dt as f64 / 1_000_000.0)) as f32;
 
     let smoothed_throttle_left = smooth_value(
         state.last_valid_command.throttle_left,
-        throttle_left,
+        cmd.throttle_left,
         max_throttle_change,
     );
 
     let smoothed_throttle_right = smooth_value(
         state.last_valid_command.throttle_right,
-        throttle_right,
+        cmd.throttle_right,
         max_throttle_change,
     );
-    //defmt::debug!("smoothed_throttle_left{}, smoothed_throttle_right {}",smoothed_throttle_left, smoothed_throttle_right);
+    
     // Установка газа моторов
     motors.throttle_clamp([smoothed_throttle_left,smoothed_throttle_right ]);
 
     // Установка позиций сервоприводов
     servo_pitch.set_position(cyclic_pitch);
     servo_roll.set_position(cyclic_roll);
-
+    
+    state.last_valid_command.throttle_left = smoothed_throttle_left;
+    state.last_valid_command.throttle_right = smoothed_throttle_right;
+    
     // Логирование для отладки
     #[cfg(feature = "debug-actuators")]
     defmt::debug!(
@@ -214,10 +218,11 @@ async fn check_actuator_health(state: &mut ActuatorState) {
 
 /// Плавное изменение значения с ограничением скорости
 fn smooth_value(current: u16, target: u16, max_change: f32) -> u16 {
-    let diff= (target - current) as f32;
+    let diff= target as f32 - current as f32;
+    
     if diff.abs() <= max_change {
         target
     } else {
-        (current as f32 + max_change * diff.signum()) as u16
+        (current as f32 + max_change * diff) as u16
     }
 }

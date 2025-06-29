@@ -131,9 +131,9 @@ async fn main(spawner: Spawner) {
     bind_interrupts!( struct Pio0Irqs {
         PIO0_IRQ_0 => embassy_rp::pio::InterruptHandler<peripherals::PIO0>;
     });
-    
+
     let clocks = get_system_clocks();
-    let divider = (clocks.sys_freq as f32) / (8.0 * 600.0 * 1000.0); // = 26.0 для 125MHz DShot 600
+    let divider = (clocks.sys_freq as f32) / (8.0 * 300.0 * 1000.0); // = 26.0 для 125MHz DShot 600
     let dshot = DshotPio::<2, _>::new(
         p.PIO0,
         Pio0Irqs,
@@ -143,7 +143,7 @@ async fn main(spawner: Spawner) {
         //(52, 0),  // clock divider
     );
     //defmt::info!("DShot clock divider {}", divider as u16);
-    
+
     // Проверка критических компонентов перед запуском
     defmt::info!("Проверка подсистем...");
 
