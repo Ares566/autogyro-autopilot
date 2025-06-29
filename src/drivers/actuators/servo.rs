@@ -15,6 +15,6 @@ impl Servo{
     }
     
     pub fn set_position(&self, p0: f32){
-        todo!()
+        return;
     }
 }

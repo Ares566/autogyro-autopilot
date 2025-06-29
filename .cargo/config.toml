@@ -2,8 +2,8 @@
 target = "thumbv6m-none-eabi"
 
 [target.thumbv6m-none-eabi]
-# runner = "probe-rs run --always-print-stacktrace --chip RP2040"  # "elf2uf2-rs -d"
-runner = "elf2uf2-rs -d " #--deploy --serial --verbose
+runner = "probe-rs run --always-print-stacktrace --chip RP2040"  # "elf2uf2-rs -d"
+# runner = "elf2uf2-rs -d " #--deploy --serial --verbose
 rustflags = [
     "-C", "link-arg=--nmagic",
     "-C", "link-arg=-Tlink.x",

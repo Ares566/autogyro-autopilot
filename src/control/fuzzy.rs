@@ -14,6 +14,7 @@ impl FuzzyController {
     }
 
     pub fn update(&self, target: f32, current: f32, dt: f32) -> f32 {
+        // TODO дописать правила и тесты
         self.fuzzy.get_fuzzy_conclusion(current-target, dt)
     }
 }

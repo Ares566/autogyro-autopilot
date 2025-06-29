@@ -21,13 +21,13 @@ pub async fn task() {
     let control_sender = CHANNELS.control_channel.sender();
 
     let mut ticker = embassy_time::Ticker::every(Duration::from_hz(CONTROL_RATE_HZ as u64));
-
+    let mut armed_count = 0;
     loop {
         ticker.next().await;
 
         // Проверяем режим полета
         let flight_mode = *SYSTEM_STATE.flight_mode.lock().await;
-        
+        armed_count += 1;
         // Если система не armed, отправляем нулевые команды
         if !SYSTEM_STATE.armed.load(core::sync::atomic::Ordering::Relaxed) {
             let _ = control_sender.try_send(ControlCommand {
@@ -36,6 +36,13 @@ pub async fn task() {
                 cyclic_pitch: 0.0,
                 cyclic_roll: 0.0,
             });
+
+           
+            
+            // через секунду моторы должны быть в состоянии armed
+            if armed_count > CONTROL_RATE_HZ {
+                SYSTEM_STATE.armed.store(true, core::sync::atomic::Ordering::Relaxed);
+            }
             
             // TODO перевод в состояние armed=true
             //  после нужен очевидный для оператора self_test системы (новый SYSTEM_STATE.flight_mode): 
@@ -43,6 +50,30 @@ pub async fn task() {
             //  + тест сервоприводов - круговое движением ротором в обе стороны
             continue;
         }
+        let mut demo_throtle = 200;
+        if armed_count > 9*CONTROL_RATE_HZ {
+            demo_throtle = 800;
+        }
+
+        if armed_count > 15*CONTROL_RATE_HZ {
+            demo_throtle = 1200;
+        }
+
+        if armed_count > 21*CONTROL_RATE_HZ {
+            demo_throtle = 300;
+        }
+
+        if armed_count > 27*CONTROL_RATE_HZ {
+            demo_throtle = 0;
+        }
+        
+        // TODO это для тестового стенда
+        let _ = control_sender.try_send(ControlCommand {
+            throttle_left: demo_throtle,
+            throttle_right: demo_throtle,
+            cyclic_pitch: 0.0,
+            cyclic_roll: 0.0,
+        });
 
         // Получаем последние данные IMU (неблокирующий вариант)
         if let Ok(imu_data) = imu_receiver.try_receive() {

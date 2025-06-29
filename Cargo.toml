@@ -34,6 +34,9 @@ codegen-units = 1
 # note: debug = true is okay - debuginfo isn't flashed to the device!
 debug = true
 
+[features]
+debug-actuators = []
+
 [profile.dev]
 lto = true
 

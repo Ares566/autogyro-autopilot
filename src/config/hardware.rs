@@ -65,7 +65,7 @@ pub mod pins {
         /// Пин для серво циклического шага по тангажу
         pub const PITCH_PIN: u8 = 10;  // GPIO10 - PWM5A
         /// Пин для серво циклического шага по крену
-        pub const ROLL_PIN: u8 = 11;   // GPIO11 - PWM5B
+        pub const ROLL_PIN: u8 = 12;   // GPIO11 - PWM5B
     }
 
     /// DShot для ESC моторов
@@ -73,7 +73,7 @@ pub mod pins {
         use super::*;
 
         /// Пин для левого мотора
-        pub const LEFT_PIN: u8 = 12;   // GPIO12
+        pub const LEFT_PIN: u8 = 11;   // GPIO12
         /// Пин для правого мотора
         pub const RIGHT_PIN: u8 = 13;  // GPIO13
     }

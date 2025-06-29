@@ -31,6 +31,9 @@ use crate::data::{SYSTEM_STATE, FlightMode};
 use crate::drivers::actuators::dshot::DshotPio;
 use crate::drivers::actuators::servo::Servo;
 use crate::tasks::*;
+use utils::system_info;
+use crate::utils::system_info::get_system_clocks;
+use nalgebra::*;
 
 /// Точка входа в программу
 #[embassy_executor::main]
@@ -40,7 +43,14 @@ async fn main(spawner: Spawner) {
 
     defmt::info!("=== Автопилот автожира v0.1.0 ===");
     defmt::info!("Инициализация системы...");
+    // Вывод информации о частотах
+    system_info::print_clock_info();
 
+    // Проверка корректности частот
+    if let Err(e) = system_info::validate_clocks() {
+        defmt::error!("Ошибка конфигурации частот: {}", e);
+        panic!("Invalid clock configuration");
+    }
     // Настройка светодиода для индикации состояния
     let mut led = Output::new(p.PIN_25, Level::Low);
 
@@ -116,20 +126,24 @@ async fn main(spawner: Spawner) {
     };
 
     // Инициализация DShot для ESC моторов
-    let _motor_left_pin = p.PIN_12;  // GPIO12 - Левый мотор
-    let _motor_right_pin = p.PIN_13; // GPIO13 - Правый мотор
+    let _motor_left_pin = p.PIN_11;  // GPIO12 - Левый мотор
+    let _motor_right_pin = p.PIN_12; // GPIO13 - Правый мотор
     bind_interrupts!( struct Pio0Irqs {
         PIO0_IRQ_0 => embassy_rp::pio::InterruptHandler<peripherals::PIO0>;
     });
-
+    
+    let clocks = get_system_clocks();
+    let divider = (clocks.sys_freq as f32) / (8.0 * 600.0 * 1000.0); // = 26.0 для 125MHz DShot 600
     let dshot = DshotPio::<2, _>::new(
         p.PIO0,
         Pio0Irqs,
         _motor_left_pin,
         _motor_right_pin,
-        (31, 0),  // clock divider
+        (divider as u16,0)
+        //(52, 0),  // clock divider
     );
-
+    //defmt::info!("DShot clock divider {}", divider as u16);
+    
     // Проверка критических компонентов перед запуском
     defmt::info!("Проверка подсистем...");
 

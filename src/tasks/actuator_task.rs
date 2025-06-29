@@ -72,7 +72,7 @@ pub async fn task(
                 // Используем последнюю валидную команду или безопасные значения
                 state.failure_count += 1;
 
-                if state.failure_count > 50 { // 1 секунда без команд
+                if state.failure_count > ACTUATOR_UPDATE_RATE_HZ { // 1 секунда без команд
                     defmt::warn!("Потеря связи с контроллером управления!");
                     // Переходим в безопасный режим
                     ControlCommand {
@@ -86,10 +86,10 @@ pub async fn task(
                 }
             }
         };
-
+        //defmt::debug!("Получены команды throttle_left{}, throttle_right {}", command.throttle_left, command.throttle_right);
         // Применение команд с учетом безопасности
-        if state.emergency_stop || !SYSTEM_STATE.armed.load(Ordering::Relaxed) {
-            // Аварийная остановка или система не взведена
+        if state.emergency_stop  { //|| !SYSTEM_STATE.armed.load(Ordering::Relaxed)
+            // Аварийная остановка // или система не взведена
             apply_safe_shutdown(
                 &mut motors,
                 &mut servo_pitch,
@@ -125,7 +125,7 @@ async fn apply_control_command(
     let throttle_right = constrain_u16(cmd.throttle_right, 48, 2048);
     let cyclic_pitch = constrain(cmd.cyclic_pitch, -1.0, 1.0);
     let cyclic_roll = constrain(cmd.cyclic_roll, -1.0, 1.0);
-
+    
     // Применение сглаживания для плавности управления
     let dt: f32 = state.last_update.elapsed().as_secs().as_();
     state.last_update = Instant::now();
@@ -145,7 +145,7 @@ async fn apply_control_command(
         throttle_right,
         max_throttle_change,
     );
-
+    //defmt::debug!("smoothed_throttle_left{}, smoothed_throttle_right {}",smoothed_throttle_left, smoothed_throttle_right);
     // Установка газа моторов
     motors.throttle_clamp([smoothed_throttle_left,smoothed_throttle_right ]);
 
@@ -156,7 +156,7 @@ async fn apply_control_command(
     // Логирование для отладки
     #[cfg(feature = "debug-actuators")]
     defmt::debug!(
-        "Actuators: L={:.2} R={:.2} P={:.2} R={:.2}",
+        "Actuators: L={} R={} P={} R={}",
         smoothed_throttle_left,
         smoothed_throttle_right,
         cyclic_pitch,
