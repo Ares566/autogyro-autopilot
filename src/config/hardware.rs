@@ -169,6 +169,12 @@ pub mod dshot {
 
 /// Адреса I2C устройств
 pub mod i2c_addresses {
+    /// MPU9250 (акселерометр + гироскоп)
+    pub const MPU9250_ADDR: u8 = 0x68;  // или 0x69 если AD0=HIGH
+
+    /// AK8963 (магнитометр внутри MPU9250)
+    pub const AK8963_ADDR: u8 = 0x0C;   // доступен через bypass mode
+
     /// Адрес MPU6050 IMU
     pub const MPU6050_ADDR: u8 = 0x68;
 

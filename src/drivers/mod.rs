@@ -1,2 +1,4 @@
 pub(crate) mod actuators;
-pub(crate) mod imu;
+pub mod imu;
+pub mod baro;
+pub mod mag;

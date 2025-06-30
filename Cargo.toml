@@ -21,6 +21,7 @@ nalgebra = { version = "0.33.0", default-features = false, features = [
 ] }
 num-traits = { version = "0.2.19", default-features = false, features = ["libm"] }
 libm = "0.2.15"
+heapless={version = "0.8.0"}
 
 [dependencies.fuzzy_controller]
 version = "0.1.1"
@@ -36,6 +37,7 @@ debug = true
 
 [features]
 debug-actuators = []
+debug-sensors = []
 
 [profile.dev]
 lto = true

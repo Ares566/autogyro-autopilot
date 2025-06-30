@@ -64,6 +64,7 @@ dependencies = [
  "embassy-sync 0.7.0",
  "embassy-time",
  "fuzzy_controller",
+ "heapless",
  "libm",
  "nalgebra",
  "num-traits",

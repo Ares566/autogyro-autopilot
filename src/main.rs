@@ -23,6 +23,7 @@ mod drivers;
 mod tasks;
 mod control;
 mod utils;
+mod sensors;
 //mod utils;
 
 
