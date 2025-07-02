@@ -106,12 +106,9 @@ impl SystemState {
 
     /// Проверка готовности системы к полету
     pub async fn is_ready_for_flight(&self) -> bool {
-        // TODO для тестов моторов эмулируем запуск системы, по очереди подключать
-        Timer::after_secs(10).await;
-        return true;
         let imu_ok = self.last_imu.lock().await.is_some();
         let alt_ok = self.last_altitude.lock().await.is_some();
-        let gps_ok = self.last_gps.lock().await.is_some();
+        let gps_ok = true; //self.last_gps.lock().await.is_some();
 
         imu_ok && alt_ok && gps_ok
     }

@@ -2,7 +2,7 @@
 use embassy_executor::Spawner;
 use embassy_time::{Duration, Timer};
 
-use crate::data::{CHANNELS, SYSTEM_STATE, ImuData, ControlCommand};
+use crate::data::{ControlCommand, ImuData, CHANNELS, SYSTEM_STATE};
 
 // TODO control && Fuzzy Logic
 use crate::control::attitude::AttitudeController;
@@ -29,7 +29,10 @@ pub async fn task() {
         let flight_mode = *SYSTEM_STATE.flight_mode.lock().await;
         armed_count += 1;
         // Если система не armed, отправляем нулевые команды
-        if !SYSTEM_STATE.armed.load(core::sync::atomic::Ordering::Relaxed) {
+        if !SYSTEM_STATE
+            .armed
+            .load(core::sync::atomic::Ordering::Relaxed)
+        {
             let _ = control_sender.try_send(ControlCommand {
                 throttle_left: 0,
                 throttle_right: 0,
@@ -37,16 +40,16 @@ pub async fn task() {
                 cyclic_roll: 0.0,
             });
 
-           
-            
             // через секунду моторы должны быть в состоянии armed
-            if armed_count > 3*CONTROL_RATE_HZ {
-                SYSTEM_STATE.armed.store(true, core::sync::atomic::Ordering::Relaxed);
+            if armed_count > 3 * CONTROL_RATE_HZ {
+                SYSTEM_STATE
+                    .armed
+                    .store(true, core::sync::atomic::Ordering::Relaxed);
             }
-            
+
             // TODO перевод в состояние armed=true
-            //  после нужен очевидный для оператора self_test системы (новый SYSTEM_STATE.flight_mode): 
-            //  на низких оборотах покрутить обоими моторами 
+            //  после нужен очевидный для оператора self_test системы (новый SYSTEM_STATE.flight_mode):
+            //  на низких оборотах покрутить обоими моторами
             //  + тест сервоприводов - круговое движением ротором в обе стороны
             continue;
         }
@@ -54,19 +57,19 @@ pub async fn task() {
         // if armed_count > 9*CONTROL_RATE_HZ {
         //     demo_throtle = 600;
         // }
-        // 
+        //
         // if armed_count > 15*CONTROL_RATE_HZ {
         //     demo_throtle = 1000;
         // }
-        // 
+        //
         // if armed_count > 21*CONTROL_RATE_HZ {
         //     demo_throtle = 300;
         // }
-        // 
+        //
         // if armed_count > 27*CONTROL_RATE_HZ {
         //     demo_throtle = 0;
         // }
-        // 
+        //
         // // TODO это для тестового стенда
         // let _ = control_sender.try_send(ControlCommand {
         //     throttle_left: demo_throtle,
@@ -75,18 +78,20 @@ pub async fn task() {
         //     cyclic_roll: 0.0,
         // });
 
+        // считываем показатели высоты
+        //if let Ok(imu_data) = altitude_receiver.try_receive() {}
+
         // Получаем последние данные IMU (неблокирующий вариант)
         if let Ok(imu_data) = imu_receiver.try_receive() {
-
             // Логирование для отладки
             #[cfg(feature = "debug-sensors")]
             defmt::debug!(
-                    "Sensors: P={} R={} Y={}",
-                    imu_data.pitch,
-                    imu_data.roll,
-                    imu_data.yaw,
-                );
-            
+                "Sensors: P={} R={} Y={}",
+                imu_data.pitch,
+                imu_data.roll,
+                imu_data.yaw,
+            );
+
             // Рассчитываем управляющие воздействия в зависимости от режима
             let control_cmd = match flight_mode {
                 crate::data::FlightMode::Stabilize => {

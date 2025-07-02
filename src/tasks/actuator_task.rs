@@ -1,12 +1,15 @@
+use crate::data::{ControlCommand, FlightMode, CHANNELS, SYSTEM_STATE};
+use crate::drivers::actuators::{
+    dshot::{DshotPio, DshotPioTrait},
+    servo::Servo,
+};
+use crate::utils::math::{constrain, constrain_i32, constrain_u16};
 use core::sync::atomic::Ordering;
 use embassy_rp::peripherals::PIO0;
 use embassy_time::{Duration, Instant, Timer};
 use nalgebra::min;
-use num_traits::AsPrimitive;
 use num_traits::real::Real;
-use crate::data::{CHANNELS, ControlCommand, SYSTEM_STATE, FlightMode};
-use crate::drivers::actuators::{servo::Servo, dshot::{DshotPio, DshotPioTrait}};
-use crate::utils::math::{constrain, constrain_i32, constrain_u16};
+use num_traits::AsPrimitive;
 
 /// Частота обновления исполнительных механизмов (Гц)
 const ACTUATOR_UPDATE_RATE_HZ: u32 = 50;
@@ -29,7 +32,6 @@ pub async fn task(
     mut servo_pitch: Servo,
     mut servo_roll: Servo,
 ) {
-
     defmt::info!("Запуск задачи управления исполнительными механизмами");
 
     // Инициализация состояния
@@ -60,7 +62,7 @@ pub async fn task(
                 state.emergency_stop = true;
             }
         }
-        
+
         // Получение команды управления
         let command = match control_receiver.try_receive() {
             Ok(cmd) => {
@@ -71,7 +73,8 @@ pub async fn task(
                 // Используем последнюю валидную команду или безопасные значения
                 state.failure_count += 1;
 
-                if state.failure_count > ACTUATOR_UPDATE_RATE_HZ { // 1 секунда без команд
+                if state.failure_count > ACTUATOR_UPDATE_RATE_HZ {
+                    // 1 секунда без команд
                     defmt::warn!("Потеря связи с контроллером управления!");
                     // Переходим в безопасный режим
                     ControlCommand {
@@ -87,16 +90,11 @@ pub async fn task(
         };
         //defmt::debug!("Получены команды throttle_left{}, throttle_right {}", command.throttle_left, command.throttle_right);
         // Применение команд с учетом безопасности
-        if state.emergency_stop  { //|| !SYSTEM_STATE.armed.load(Ordering::Relaxed)
+        if state.emergency_stop {
+            //|| !SYSTEM_STATE.armed.load(Ordering::Relaxed)
             // Аварийная остановка // или система не взведена
-            apply_safe_shutdown(
-                &mut motors,
-                &mut servo_pitch,
-                &mut servo_roll,
-                &mut state,
-            ).await;
+            apply_safe_shutdown(&mut motors, &mut servo_pitch, &mut servo_roll, &mut state).await;
         } else {
-            
             // Нормальное управление
             apply_control_command(
                 command,
@@ -104,12 +102,13 @@ pub async fn task(
                 &mut servo_pitch,
                 &mut servo_roll,
                 &mut state,
-            ).await;
-            
+            )
+            .await;
         }
-
-        // Проверка состояния исполнительных механизмов
-        check_actuator_health(&mut state).await;
+        // if SYSTEM_STATE.armed.load(Ordering::Relaxed) {
+        //     // Проверка состояния исполнительных механизмов
+        //     check_actuator_health(&mut state).await;
+        // }
     }
 }
 
@@ -126,7 +125,7 @@ async fn apply_control_command(
     // let throttle_right = constrain_u16(cmd.throttle_right, 48, 2048);
     let cyclic_pitch = constrain(cmd.cyclic_pitch, -1.0, 1.0);
     let cyclic_roll = constrain(cmd.cyclic_roll, -1.0, 1.0);
-    
+
     // Применение сглаживания для плавности управления
     let dt = state.last_update.elapsed().as_micros();
     state.last_update = Instant::now();
@@ -146,17 +145,17 @@ async fn apply_control_command(
         cmd.throttle_right,
         max_throttle_change,
     );
-    
+
     // Установка газа моторов
-    motors.throttle_clamp([smoothed_throttle_left,smoothed_throttle_right ]);
+    motors.throttle_clamp([smoothed_throttle_left, smoothed_throttle_right]);
 
     // Установка позиций сервоприводов
     servo_pitch.set_position(cyclic_pitch);
     servo_roll.set_position(cyclic_roll);
-    
+
     state.last_valid_command.throttle_left = smoothed_throttle_left;
     state.last_valid_command.throttle_right = smoothed_throttle_right;
-    
+
     // Логирование для отладки
     #[cfg(feature = "debug-actuators")]
     defmt::debug!(
@@ -178,18 +177,19 @@ async fn apply_safe_shutdown(
     defmt::warn!("Применение безопасного отключения");
 
     // Плавное снижение оборотов моторов
-    let last_throttle = min(state.last_valid_command.throttle_left, state.last_valid_command.throttle_right);
+    let last_throttle = min(
+        state.last_valid_command.throttle_left,
+        state.last_valid_command.throttle_right,
+    );
     let mut throttle = last_throttle;
     for i in (1..=10).rev() {
-
-        throttle  = throttle - last_throttle * i / 100;
+        throttle = throttle - last_throttle * i / 100;
         motors.throttle_clamp([throttle, throttle]);
         Timer::after(Duration::from_millis(100)).await;
     }
 
     // Полная остановка моторов
     motors.throttle_minimum();
-
 
     // Центрирование сервоприводов
     servo_pitch.set_position(0.0);
@@ -218,8 +218,8 @@ async fn check_actuator_health(state: &mut ActuatorState) {
 
 /// Плавное изменение значения с ограничением скорости
 fn smooth_value(current: u16, target: u16, max_change: f32) -> u16 {
-    let diff= target as f32 - current as f32;
-    
+    let diff = target as f32 - current as f32;
+
     if diff.abs() <= max_change {
         target
     } else {
