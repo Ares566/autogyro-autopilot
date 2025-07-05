@@ -1,16 +1,15 @@
-
 #![no_std]
 #![no_main]
 
-
-
 use embassy_executor::Spawner;
-use embassy_rp::{bind_interrupts, peripherals};
 use embassy_rp::gpio::{Level, Output};
 use embassy_rp::i2c::{self, Config as I2cConfig};
-use embassy_rp::peripherals::{I2C0, PIN_0, PIN_1, PIN_2, PIN_3, PIN_4, PIN_5, PIN_6, PIN_7, UART0};
+use embassy_rp::peripherals::{
+    I2C0, PIN_0, PIN_1, PIN_2, PIN_3, PIN_4, PIN_5, PIN_6, PIN_7, UART0,
+};
 use embassy_rp::pwm::{self, Pwm};
 use embassy_rp::uart::{self, Config as UartConfig};
+use embassy_rp::{bind_interrupts, peripherals, Peripheral};
 use embassy_time::{Duration, Timer};
 use {defmt_rtt as _, panic_probe as _};
 
@@ -20,21 +19,20 @@ mod drivers;
 // mod sensors;
 // mod control;
 // mod flight;
-mod tasks;
 mod control;
-mod utils;
 mod sensors;
+mod tasks;
+mod utils;
 //mod utils;
 
-
 use crate::config::hardware::*;
-use crate::data::{SYSTEM_STATE, FlightMode};
+use crate::data::{FlightMode, SYSTEM_STATE};
 use crate::drivers::actuators::dshot::DshotPio;
 use crate::drivers::actuators::servo::Servo;
 use crate::tasks::*;
-use utils::system_info;
 use crate::utils::system_info::get_system_clocks;
 use nalgebra::*;
+use utils::system_info;
 
 /// Точка входа в программу
 #[embassy_executor::main]
@@ -96,38 +94,70 @@ async fn main(spawner: Spawner) {
         uart::Uart::new_blocking(p.UART1, tx, rx, config)
     };
 
-    // TODO Инициализацию в actuators::servo
-    // Инициализация PWM для сервоприводов
-    let pwm_servo_pitch = {
-        // let pin = p.PIN_10; // GPIO10 - Серво тангажа
-        // let mut pwm = Pwm::new_output_a(p.PWM_CH5, pin, Default::default());
-        // 
-        // // Настройка для сервоприводов: 50Hz (20ms период)
-        // let mut cfg = pwm::Config::default();
-        // cfg.divider = 125.into(); // 125MHz / 125 = 1MHz
-        // cfg.top = 20000; // 1MHz / 20000 = 50Hz
-        // pwm.set_config(&cfg);
-        // 
-        // pwm
-        Servo::new().unwrap()
-    };
+    // === Инициализация сервоприводов ===
+    defmt::info!("Инициализация сервоприводов...");
+    // Создаем PWM для сервопривода тангажа (pitch)
+    let pwm_pitch = Pwm::new_output_a(p.PWM_SLICE3, p.PIN_6, pwm::Config::default());
 
-    let pwm_servo_roll = {
-        // let pin = p.PIN_11; // GPIO11 - Серво крена
-        // let mut pwm = Pwm::new_output_b(p.PWM_CH5, pin, Default::default());
-        // 
-        // // Используем тот же таймер PWM_CH5
-        // let mut cfg = pwm::Config::default();
-        // cfg.divider = 125.into();
-        // cfg.top = 20000;
-        // pwm.set_config(&cfg);
-        // 
-        // pwm
-        Servo::new().unwrap()
-    };
+    // Создаем PWM для сервопривода крена (roll)
+    let pwm_roll = Pwm::new_output_a(p.PWM_SLICE5, p.PIN_10, pwm::Config::default());
+
+    // Создаем драйверы сервоприводов
+    let mut servo_pitch = Servo::new(pwm_pitch);
+    let mut servo_roll = Servo::new(pwm_roll);
+
+    // Инициализируем сервоприводы
+    match servo_pitch.init().await {
+        Ok(_) => defmt::info!("Серво тангажа инициализирован"),
+        Err(e) => {
+            defmt::error!("Ошибка инициализации серво тангажа: {}", e);
+            // Переход в аварийный режим
+            *SYSTEM_STATE.flight_mode.lock().await = FlightMode::Emergency;
+        }
+    }
+
+    match servo_roll.init().await {
+        Ok(_) => defmt::info!("Серво крена инициализирован"),
+        Err(e) => {
+            defmt::error!("Ошибка инициализации серво крена: {}", e);
+            // Переход в аварийный режим
+            *SYSTEM_STATE.flight_mode.lock().await = FlightMode::Emergency;
+        }
+    }
+
+    // Опциональная калибровка сервоприводов при первом запуске
+    #[cfg(feature = "calibrate-servos")]
+    {
+        defmt::info!("Запуск калибровки сервоприводов...");
+
+        // Калибровка серво тангажа
+        if let Err(e) = servo_pitch.calibrate().await {
+            defmt::error!("Ошибка калибровки серво тангажа: {}", e);
+        }
+
+        // Калибровка серво крена
+        if let Err(e) = servo_roll.calibrate().await {
+            defmt::error!("Ошибка калибровки серво крена: {}", e);
+        }
+
+        defmt::info!("Калибровка сервоприводов завершена");
+    }
+
+    // Установка начальных позиций (центр)
+    servo_pitch.set_position(0.0).await.unwrap();
+    servo_roll.set_position(0.0).await.unwrap();
+
+    // Установка параметров сервоприводов для автожира
+    // Ограничение скорости для плавного движения
+    servo_pitch.set_rate_limit(Some(2.0)); // 2 полных хода в секунду
+    servo_roll.set_rate_limit(Some(2.0));
+
+    // Если нужна инверсия направления (зависит от механики)
+    // servo_pitch.set_inverted(true);
+    // servo_roll.set_inverted(false);
 
     // Инициализация DShot для ESC моторов
-    let _motor_left_pin = p.PIN_11;  // GPIO12 - Левый мотор
+    let _motor_left_pin = p.PIN_11; // GPIO12 - Левый мотор
     let _motor_right_pin = p.PIN_12; // GPIO13 - Правый мотор
     bind_interrupts!( struct Pio0Irqs {
         PIO0_IRQ_0 => embassy_rp::pio::InterruptHandler<peripherals::PIO0>;
@@ -140,8 +170,7 @@ async fn main(spawner: Spawner) {
         Pio0Irqs,
         _motor_left_pin,
         _motor_right_pin,
-        (divider as u16,0)
-        //(52, 0),  // clock divider
+        (divider as u16, 0), //(52, 0),  // clock divider
     );
     //defmt::info!("DShot clock divider {}", divider as u16);
 
@@ -165,11 +194,9 @@ async fn main(spawner: Spawner) {
 
     // TODO вынести на отдельное ядро
     // Задача управления исполнительными механизмами
-    spawner.spawn(actuator_task::task(
-        dshot,
-        pwm_servo_pitch,
-        pwm_servo_roll,
-    )).unwrap();
+    spawner
+        .spawn(actuator_task::task(dshot, servo_pitch, servo_roll))
+        .unwrap();
 
     // Задача телеметрии
     //spawner.spawn(tasks::telemetry_task(uart_telem)).unwrap();
@@ -209,7 +236,9 @@ async fn main(spawner: Spawner) {
             FlightMode::Emergency => {
                 defmt::error!("АВАРИЙНЫЙ РЕЖИМ! Экстренная посадка!");
                 // Переключаем все системы в безопасный режим
-                SYSTEM_STATE.armed.store(false, core::sync::atomic::Ordering::Relaxed);
+                SYSTEM_STATE
+                    .armed
+                    .store(false, core::sync::atomic::Ordering::Relaxed);
             }
             _ => {}
         }
