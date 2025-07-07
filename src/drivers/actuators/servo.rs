@@ -4,8 +4,10 @@ use crate::config::hardware::servo::{
     CENTER_PULSE_US, MAX_ANGLE_DEG, MAX_PULSE_US, MIN_PULSE_US, PWM_PERIOD_US,
 };
 use crate::utils::math::{constrain, map_range};
+use core::fmt::Debug;
 use embassy_rp::pwm::{Config as PwmConfig, Pwm, SetDutyCycle};
 use embassy_time::{Duration, Timer};
+use heapless::String;
 use num_traits::{AsPrimitive, ToPrimitive};
 
 /// Ошибки работы с сервоприводом
@@ -167,11 +169,20 @@ impl Servo {
         // Устанавливаем коэффициент заполнения PWM
         // duty = (pulse_us / period_us) * top
         let duty = ((pulse_us as u32 * self.pwm.max_duty_cycle() as u32) / PWM_PERIOD_US) as u16;
-        self.pwm.set_duty_cycle(duty);
-        // TODO Unused Result<(), PwmError> that must be used
-        defmt::trace!("Серво: импульс {} мкс, duty {}", pulse_us, duty);
-
-        Ok(())
+        match self.pwm.set_duty_cycle(duty) {
+            Ok(_) => {
+                defmt::trace!("Серво: импульс {} мкс, duty {}", pulse_us, duty);
+                Ok(())
+            }
+            Err(e) => {
+                defmt::error!(
+                    "Ошибка серво InvalidDutyCycle: импульс {} мкс, duty {}",
+                    pulse_us,
+                    duty
+                );
+                Err(ServoError::PwmError)
+            }
+        }
     }
 
     /// Плавное перемещение в заданную позицию
