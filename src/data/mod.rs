@@ -64,6 +64,7 @@ pub struct SystemState {
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum FlightMode {
+    PreflightChecks,
     Disarmed,
     Stabilize,
     TakeOff,

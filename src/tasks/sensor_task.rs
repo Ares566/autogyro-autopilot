@@ -60,7 +60,7 @@ pub async fn task(mut i2c: I2c<'static, I2C0, Blocking>) {
         Ok(mut mag) => {
             // Установка магнитного склонения для вашего региона
             // Например, для Москвы около +11°
-            mag.set_declination(11.0);
+            mag.set_declination(8.0);
             defmt::info!("HMC5983 инициализирован успешно");
             mag
         }
@@ -108,9 +108,7 @@ pub async fn task(mut i2c: I2c<'static, I2C0, Blocking>) {
         altitude_processor.calibrate_ground_level(pressure);
     }
 
-    let mut ticker = embassy_time::Ticker::every(Duration::from_hz(100));
     // === Основной цикл опроса ===
-
     let mut ticker = embassy_time::Ticker::every(Duration::from_hz(IMU_SAMPLE_RATE_HZ as u64));
     let mut baro_counter = 0u8;
     let mut mag_counter = 0u8;
@@ -169,12 +167,12 @@ pub async fn task(mut i2c: I2c<'static, I2C0, Blocking>) {
                     // TODO придумать что тут делать
                 }
 
-                defmt::trace!(
-                    "IMU: roll={:?}° pitch={:?}° yaw={:?}°",
-                    fused_data.roll * 180.0 / core::f32::consts::PI,
-                    fused_data.pitch * 180.0 / core::f32::consts::PI,
-                    fused_data.yaw * 180.0 / core::f32::consts::PI
-                );
+                // defmt::trace!(
+                //     "IMU: roll={:?}° pitch={:?}° yaw={:?}°",
+                //     fused_data.roll * 180.0 / core::f32::consts::PI,
+                //     fused_data.pitch * 180.0 / core::f32::consts::PI,
+                //     fused_data.yaw * 180.0 / core::f32::consts::PI
+                // );
             }
             Err(e) => {
                 defmt::error!("Ошибка чтения IMU: {}", e);

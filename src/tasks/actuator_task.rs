@@ -88,7 +88,7 @@ pub async fn task(
                 }
             }
         };
-        //defmt::debug!("Получены команды throttle_left{}, throttle_right {}", command.throttle_left, command.throttle_right);
+
         // Применение команд с учетом безопасности
         if state.emergency_stop {
             //|| !SYSTEM_STATE.armed.load(Ordering::Relaxed)
@@ -121,8 +121,6 @@ async fn apply_control_command(
     state: &mut ActuatorState,
 ) {
     // Проверка и ограничение значений команд
-    // let throttle_left = constrain_u16(cmd.throttle_left, 48, 2048);
-    // let throttle_right = constrain_u16(cmd.throttle_right, 48, 2048);
     let cyclic_pitch = constrain(cmd.cyclic_pitch, -1.0, 1.0);
     let cyclic_roll = constrain(cmd.cyclic_roll, -1.0, 1.0);
 

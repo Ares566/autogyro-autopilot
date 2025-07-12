@@ -1,6 +1,7 @@
 #![no_std]
 #![no_main]
 
+use core::fmt::Debug;
 use embassy_executor::Spawner;
 use embassy_rp::gpio::{Level, Output};
 use embassy_rp::i2c::{self, Config as I2cConfig};
@@ -27,7 +28,7 @@ mod utils;
 
 use crate::config::hardware::*;
 use crate::data::{FlightMode, SYSTEM_STATE};
-use crate::drivers::actuators::dshot::DshotPio;
+use crate::drivers::actuators::dshot::{DshotPio, DshotPioTrait};
 use crate::drivers::actuators::servo::Servo;
 use crate::tasks::*;
 use crate::utils::system_info::get_system_clocks;
@@ -172,13 +173,12 @@ async fn main(spawner: Spawner) {
         _motor_right_pin,
         (divider as u16, 0), //(52, 0),  // clock divider
     );
-    //defmt::info!("DShot clock divider {}", divider as u16);
 
     // Проверка критических компонентов перед запуском
     defmt::info!("Проверка подсистем...");
 
     // Устанавливаем начальный режим полета
-    *SYSTEM_STATE.flight_mode.lock().await = FlightMode::Disarmed;
+    *SYSTEM_STATE.flight_mode.lock().await = FlightMode::PreflightChecks;
 
     // Запуск асинхронных задач
     defmt::info!("Запуск задач...");
@@ -188,15 +188,6 @@ async fn main(spawner: Spawner) {
 
     // Задача обработки GPS
     //spawner.spawn(tasks::gps_task(uart_gps)).unwrap();
-
-    // TODO Задача управления полетом
-    spawner.spawn(control_task::task()).unwrap();
-
-    // TODO вынести на отдельное ядро
-    // Задача управления исполнительными механизмами
-    spawner
-        .spawn(actuator_task::task(dshot, servo_pitch, servo_roll))
-        .unwrap();
 
     // Задача телеметрии
     //spawner.spawn(tasks::telemetry_task(uart_telem)).unwrap();
@@ -215,12 +206,24 @@ async fn main(spawner: Spawner) {
         Timer::after(Duration::from_millis(500)).await;
     }
 
+    // TODO Задача управления полетом
+    spawner.spawn(control_task::task()).unwrap();
+
+    // TODO вынести на отдельное ядро
+    // Задача управления исполнительными механизмами
+    spawner
+        .spawn(actuator_task::task(dshot, servo_pitch, servo_roll))
+        .unwrap();
+
     // Основной цикл для обработки команд высокого уровня
     loop {
         // Проверяем режим полета и выполняем соответствующие действия
         let mode = *SYSTEM_STATE.flight_mode.lock().await;
 
         match mode {
+            FlightMode::PreflightChecks => {
+                defmt::info!("Предполетные проверки исполнительных механизмов");
+            }
             FlightMode::Disarmed => {
                 // Ждем команды на взлет
                 // TODO: Добавить обработку команд с наземной станции
