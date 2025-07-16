@@ -1,23 +1,25 @@
 // src/tasks/control_task.rs
+use crate::config::flight;
+use crate::data::{ControlCommand, FlightMode, ImuData, CHANNELS, SYSTEM_STATE};
 use embassy_executor::Spawner;
 use embassy_time::{Duration, Timer};
-
-use crate::data::{ControlCommand, FlightMode, ImuData, CHANNELS, SYSTEM_STATE};
 
 // TODO control && Fuzzy Logic
 use crate::control::attitude::AttitudeController;
 // use crate::control::fuzzy::FuzzyController;
 
 /// Частота цикла управления (Гц)
-pub(crate) const CONTROL_RATE_HZ: u32 = 50;
+pub const CONTROL_RATE_HZ: u32 = 50;
 
 #[embassy_executor::task]
 pub async fn task() {
     // Инициализация контроллеров
     let mut attitude_controller = AttitudeController::new();
+    attitude_controller.set_throttle(flight::takeoff::INITIAL_THROTTLE);
 
     // Получаем приемник IMU данных и отправитель команд
     let mut imu_receiver = CHANNELS.imu_channel.receiver();
+    let mut alt_receiver = CHANNELS.altitude_channel.receiver();
     let control_sender = CHANNELS.control_channel.sender();
 
     let mut ticker = embassy_time::Ticker::every(Duration::from_hz(CONTROL_RATE_HZ as u64));
@@ -52,7 +54,9 @@ pub async fn task() {
         let flight_mode = *SYSTEM_STATE.flight_mode.lock().await;
 
         // считываем показатели высоты
-        //if let Ok(imu_data) = altitude_receiver.try_receive() {}
+        let Ok(alt_data) = alt_receiver.try_receive() else {
+            todo!()
+        };
 
         // Получаем последние данные IMU (неблокирующий вариант)
         if let Ok(imu_data) = imu_receiver.try_receive() {
@@ -87,6 +91,11 @@ pub async fn task() {
                     attitude_controller.calculate_stabilize(&imu_data)
                 }
                 crate::data::FlightMode::TakeOff => {
+                    // проверка результата взлета
+                    if alt_data.altitude_m > 1.0 {
+                        *SYSTEM_STATE.flight_mode.lock().await = FlightMode::Stabilize;
+                    }
+
                     // Режим взлета
                     attitude_controller.calculate_takeoff(&imu_data)
                 }

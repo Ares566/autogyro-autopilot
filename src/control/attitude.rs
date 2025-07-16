@@ -23,6 +23,7 @@ pub struct AttitudeController {
     /// Целевые углы (радианы)
     target_roll: f32, // TODO например хранить множитель для 1/1000
     target_pitch: f32,
+
     /// Целевая угловая скорость рыскания (рад/с)
     target_yaw_rate: f32,
 
@@ -212,7 +213,7 @@ impl AttitudeController {
 
         // Для автожира управление курсом через дифференциал тяги
         let yaw_differential = yaw_out * autogyro::YAW_THRUST_DIFFERENTIAL;
-        
+
         // TODO перевести на нечеткую логику, пока заглушки
         // Расчет тяги моторов с учетом управления курсом
         let throttle_left = constrain_u16(self.base_throttle - yaw_differential as u16, 48, 2047);
@@ -291,7 +292,7 @@ mod tests {
     #[test]
     fn test_target_limits() {
         let mut controller = AttitudeController::new();
-        controller.set_targets(45.0, 30.0, 200.0, 2048/2);
+        controller.set_targets(45.0, 30.0, 200.0, 2048 / 2);
 
         let (roll, pitch, _) = controller.get_targets();
         assert!(roll <= stabilization::MAX_ROLL_ANGLE_DEG);

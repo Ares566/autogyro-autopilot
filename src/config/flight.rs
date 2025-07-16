@@ -6,9 +6,9 @@ use core::f32::consts::PI;
 pub mod pid {
     /// PID коэффициенты для контроля угла крена (roll)
     pub mod roll_angle {
-        pub const KP: f32 = 4.5;    // Пропорциональный коэффициент
-        pub const KI: f32 = 0.02;   // Интегральный коэффициент
-        pub const KD: f32 = 0.15;   // Дифференциальный коэффициент
+        pub const KP: f32 = 4.5; // Пропорциональный коэффициент
+        pub const KI: f32 = 0.02; // Интегральный коэффициент
+        pub const KD: f32 = 0.15; // Дифференциальный коэффициент
         pub const I_LIMIT: f32 = 10.0; // Ограничение интегральной составляющей
         pub const OUTPUT_LIMIT: f32 = 1.0; // Максимальный выход (-1.0 до 1.0)
     }
@@ -86,13 +86,13 @@ pub mod takeoff {
     pub const CLIMB_RATE_MS: f32 = 1.5;
 
     /// Минимальная тяга для взлета (0.0 - 1.0)
-    pub const MIN_THROTTLE: f32 = 0.3;
+    pub const MIN_THROTTLE: u16 = 600;
 
     /// Начальная тяга при взлете (0.0 - 1.0)
-    pub const INITIAL_THROTTLE: f32 = 0.5;
+    pub const INITIAL_THROTTLE: u16 = 1200;
 
     /// Максимальная тяга при взлете (0.0 - 1.0)
-    pub const MAX_THROTTLE: f32 = 0.8;
+    pub const MAX_THROTTLE: u16 = 2000;
 
     /// Время раскрутки моторов перед взлетом (мс)
     pub const MOTOR_SPINUP_TIME_MS: u64 = 2000;
